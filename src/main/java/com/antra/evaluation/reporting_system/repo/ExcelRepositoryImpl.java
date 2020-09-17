@@ -7,9 +7,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 @Repository
 public class ExcelRepositoryImpl implements ExcelRepository {
+
+    private AtomicLong id = new AtomicLong(0);
 
     Map<String, ExcelFile> excelData = new ConcurrentHashMap<>();
 
@@ -20,17 +24,23 @@ public class ExcelRepositoryImpl implements ExcelRepository {
 
     @Override
     public ExcelFile saveFile(ExcelFile file) {
-        return null;
-    }
-
-    @Override
-    public ExcelFile deleteFile(String id) {
-        return null;
+        excelData.put(file.getFileId(), file);
+        return file;
     }
 
     @Override
     public List<ExcelFile> getFiles() {
-        return null;
+        return excelData.values().stream().collect(Collectors.toList());
+    }
+
+    @Override
+    public String getNextId(){
+        return String.valueOf(id.getAndAdd(1));
+    }
+
+    @Override
+    public void deleteFileById(String id) {
+        excelData.remove(id);
     }
 }
 

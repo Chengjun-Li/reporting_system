@@ -1,5 +1,6 @@
 package com.antra.evaluation.reporting_system.service;
 
+import com.antra.evaluation.reporting_system.exception.IllegalRequestParametersException;
 import com.antra.evaluation.reporting_system.pojo.report.ExcelData;
 import com.antra.evaluation.reporting_system.pojo.report.ExcelDataHeader;
 import com.antra.evaluation.reporting_system.pojo.report.ExcelDataSheet;
@@ -32,17 +33,17 @@ public class ExcelGenerationServiceImpl implements ExcelGenerationService {
 
     private void validateDate(ExcelData data) {
         if (data.getSheets().size() < 1) {
-            throw new RuntimeException("Excel Data Error: no sheet is defined");
+            throw new IllegalRequestParametersException("Excel Data Error: no sheet is defined");
         }
         for (ExcelDataSheet sheet : data.getSheets()) {
             if (StringUtils.isEmpty(sheet.getTitle())) {
-                throw new RuntimeException("Excel Data Error: sheet name is missing");
+                throw new IllegalRequestParametersException("Excel Data Error: sheet name is missing");
             }
             if(sheet.getHeaders() != null) {
                 int columns = sheet.getHeaders().size();
-                for (List<Object> dataRow : sheet.getDataRows()) {
+                for (List<String> dataRow : sheet.getDataRows()) {
                     if (dataRow.size() != columns) {
-                        throw new RuntimeException("Excel Data Error: sheet data has difference length than header number");
+                        throw new IllegalRequestParametersException("Excel Data Error: sheet data has difference length than header number");
                     }
                 }
             }
@@ -92,7 +93,7 @@ public class ExcelGenerationServiceImpl implements ExcelGenerationService {
 //                        case DATE:cell.setCellValue((Date)eachRow.get(j));break;
 //                        default:cell.setCellValue(String.valueOf(eachRow.get(j)));break;
 //                    }
-                    cell.setCellValue(String.valueOf(eachRow.get(j)));
+                    cell.setCellValue(eachRow.get(j)); //String.valueOf(eachRow.get(j))
                     cell.setCellStyle(style);
                 }
             }
@@ -104,11 +105,12 @@ public class ExcelGenerationServiceImpl implements ExcelGenerationService {
 
         File currDir = new File(".");
         String path = currDir.getAbsolutePath();
-        String fileLocation = path.substring(0, path.length() - 1) + "temp.xlsx";  // TODO : file name cannot be hardcoded here
+        String fileLocation = path.substring(0, path.length() - 1) + data.getTitle() + ".xlsx";  // TODO : file name cannot be hardcoded here
 
         FileOutputStream outputStream = new FileOutputStream(fileLocation);
         workbook.write(outputStream);
         try {
+            outputStream.close(); //todo figure out why we need to close stream here.
             workbook.close();
         } catch (IOException e) {
             e.printStackTrace();

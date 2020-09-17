@@ -1,13 +1,15 @@
 package com.antra.evaluation.reporting_system.pojo.api;
 
-public class ExcelResponse {
-    private String fileId;
+import com.antra.evaluation.reporting_system.pojo.report.ExcelFile;
 
-    public String getFileId() {
-        return fileId;
+public class ExcelResponse {
+    ExcelFile file;
+
+    public ExcelFile getFile() {
+        return file;
     }
 
-    public void setFileId(String fileId) {
-        this.fileId = fileId;
+    public void setFile(ExcelFile file) {
+        this.file = file;
     }
 }

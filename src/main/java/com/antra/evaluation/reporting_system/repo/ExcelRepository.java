@@ -10,7 +10,9 @@ public interface ExcelRepository {
 
     ExcelFile saveFile(ExcelFile file);
 
-    ExcelFile deleteFile(String id);
-
     List<ExcelFile> getFiles();
+
+    String getNextId();
+
+    void deleteFileById(String id);
 }

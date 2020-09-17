@@ -1,4 +1,18 @@
 package com.antra.evaluation.reporting_system.pojo.api;
 
-public class MultiSheetExcelRequest extends ExcelRequest{
+import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
+
+public class MultiSheetExcelRequest extends ExcelRequest {
+    @NotNull
+    @NotEmpty
+    private String splitBy;
+
+    public String getSplitBy() {
+        return splitBy;
+    }
+
+    public void setSplitBy(String splitBy) {
+        this.splitBy = splitBy;
+    }
 }
