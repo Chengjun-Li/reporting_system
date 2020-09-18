@@ -20,8 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.restassured.module.mockmvc.RestAssuredMockMvc.given;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasItems;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -85,7 +83,7 @@ class ReportingSystemApplicationTests {
     }
 
     @Test
-    public void testExcelGegeration() {
+    public void testExcelGeneration() {
         File file = null;
         try {
             file = reportService.generateExcelReport(data);
@@ -108,8 +106,17 @@ class ReportingSystemApplicationTests {
         given().accept("application/json").contentType(ContentType.JSON).body("{\"headers\":[\"Name\",\"Age\"], \"data\":[[\"Teresa\",\"5\"],[\"Daniel\",\"1\"]],\"splitBy\":\"Age\"}").post("/excel/auto").peek().
                 then().assertThat()
                 .statusCode(200)
-                .body("file.numOfSheets", equalTo(2));
+                .body("file.numOfSheets",Matchers.equalTo(2));
     }
+
+    @Test
+    public void testCreateMultipleExcel(){
+        given().accept("application/json").contentType(ContentType.JSON).body("[{\"headers\":[\"Name\",\"Age\"], \"data\":[[\"Teresa\",\"5\"],[\"Daniel\",\"1\"]]},{\"headers\":[\"Name\",\"Age\"], \"data\":[[\"Teresa\",\"5\"],[\"Daniel\",\"1\"]]}]").post("/excel/all").peek().
+                then().assertThat()
+                .statusCode(200)
+                .body("file.fileId", Matchers.iterableWithSize(2));
+    }
+
 
     @Test
     public void testDeleteExcelWhenFileExist(){
@@ -147,7 +154,7 @@ class ReportingSystemApplicationTests {
         given().accept("application/json").get("/excel").peek().
                 then().assertThat()
                 .statusCode(200)
-                .body("file.fileId",hasItems(fileId_1,fileId_2));
+                .body("file.fileId", Matchers.hasItems(fileId_1,fileId_2));
     }
 
     @Test
@@ -156,6 +163,19 @@ class ReportingSystemApplicationTests {
                 then().extract().path("file.fileId");
 
         given().accept("application/json").get("/excel/" + fileId + "/content").peek().
+                then().assertThat()
+                .statusCode(200);
+    }
+
+    @Test
+    public void testDownloadZipFileWhenFileExist(){
+        String fileId_1 = given().accept("application/json").contentType(ContentType.JSON).body("{\"headers\":[\"Name\",\"Age\"], \"data\":[[\"Teresa\",\"5\"],[\"Daniel\",\"1\"]]}").post("/excel").peek().
+                then().extract().path("file.fileId");
+
+        String fileId_2 = given().accept("application/json").contentType(ContentType.JSON).body("{\"headers\":[\"Name\",\"Age\"], \"data\":[[\"Teresa\",\"5\"],[\"Daniel\",\"1\"]]}").post("/excel").peek().
+                then().extract().path("file.fileId");
+
+        given().accept("application/json").contentType(ContentType.JSON).body("[{\"fileId\": " + fileId_1 + "},{\"fileId\": " + fileId_2 + "}]").post("/excel/all/content").peek().
                 then().assertThat()
                 .statusCode(200);
     }

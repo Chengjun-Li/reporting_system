@@ -4,9 +4,6 @@ package com.antra.evaluation.reporting_system.endpoint;
 import com.antra.evaluation.reporting_system.exception.ExcelFileNotFoundException;
 import com.antra.evaluation.reporting_system.exception.IllegalRequestParametersException;
 import com.antra.evaluation.reporting_system.pojo.api.*;
-import com.antra.evaluation.reporting_system.pojo.report.ExcelData;
-import com.antra.evaluation.reporting_system.pojo.report.ExcelDataHeader;
-import com.antra.evaluation.reporting_system.pojo.report.ExcelDataSheet;
 import com.antra.evaluation.reporting_system.pojo.report.ExcelFile;
 import com.antra.evaluation.reporting_system.service.ExcelService;
 import io.swagger.annotations.ApiOperation;
@@ -23,14 +20,9 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+
 
 @RestController
 public class ExcelGenerationController {
@@ -47,117 +39,22 @@ public class ExcelGenerationController {
     @PostMapping("/excel")
     @ApiOperation("Generate Excel")
     public ResponseEntity<ExcelResponse> createExcel(@RequestBody @Validated ExcelRequest request) throws IOException {
-        //Convert ExcelRequest to ExcelData
-        List<ExcelDataHeader> headers = convertStringsToHeaders(request.getHeaders());
-        ExcelDataSheet singleSheet = new ExcelDataSheet("Sheet1", headers, request.getData());
-        List<ExcelDataSheet> sheets = new ArrayList<>();
-        sheets.add(singleSheet);
-        ExcelData data = buildExcelData(sheets);
-        //generate excel report
-        File file = excelService.generateExcelReport(data);
-        //save excel meta data
-        ExcelFile excelFile = buildExcelFile(request, data, file);
-        excelService.saveExcelFileInfo(excelFile);
-        //return user excel meta data
-        ExcelResponse response = new ExcelResponse();
-        response.setFile(excelFile);
+        ExcelResponse response = excelService.createExcel(request);
         return new ResponseEntity<>(response, HttpStatus.OK);
-    }
-
-    private List<ExcelDataHeader> convertStringsToHeaders(List<String> list) {
-        List<ExcelDataHeader> headers = list.stream().map(string -> {
-            ExcelDataHeader header = new ExcelDataHeader();
-            header.setName(string);
-            header.setWidth(5);
-            return header;
-        }).collect(Collectors.toList());
-        return headers;
-    }
-
-    private ExcelData buildExcelData(List<ExcelDataSheet> sheets) {
-        ExcelData data = new ExcelData();
-        data.setGeneratedTime(LocalDateTime.now());
-        data.setSheets(sheets);
-        String fileId = excelService.getNextId();
-        data.setTitle(fileId);
-        return data;
-    }
-
-    private ExcelFile buildExcelFile(ExcelRequest request, ExcelData data, File file) {
-        ExcelFile excelFile = new ExcelFile();
-        excelFile.setDescription(request.getDescription());
-        excelFile.setSubmitter(request.getSubmitter());
-        excelFile.setGeneratedTime(data.getGeneratedTime());
-        excelFile.setDownloadLink("/excel/" + data.getTitle() + "/content");
-        excelFile.setFileId(data.getTitle());
-        excelFile.setFileLocation(file.getAbsolutePath());
-        excelFile.setNumOfSheets(data.getSheets().size());
-        return excelFile;
     }
 
     @PostMapping("/excel/all")
     @ApiOperation("Generate Multiple Excels")
     public ResponseEntity<List<ExcelResponse>> createMultipleExcels(@RequestBody @Validated List<ExcelRequest> requestList) throws IOException {
-        //Convert ExcelRequest to ExcelData
-        List<ExcelResponse> list = new ArrayList<>();
-        for (ExcelRequest request : requestList) {
-            List<ExcelDataHeader> headers = convertStringsToHeaders(request.getHeaders());
-            ExcelDataSheet singleSheet = new ExcelDataSheet("Sheet1", headers, request.getData());
-            List<ExcelDataSheet> sheets = new ArrayList<>();
-            sheets.add(singleSheet);
-            ExcelData data = buildExcelData(sheets);
-            //generate excel report
-            File file = excelService.generateExcelReport(data);
-            //save excel meta data
-            ExcelFile excelFile = buildExcelFile(request, data, file);
-            excelService.saveExcelFileInfo(excelFile);
-            //return user excel meta data
-            ExcelResponse response = new ExcelResponse();
-            response.setFile(excelFile);
-            list.add(response);
-        }
+        List<ExcelResponse> list = excelService.createMultipleExcels(requestList);
         return new ResponseEntity<>(list, HttpStatus.OK);
     }
 
     @PostMapping("/excel/auto")
     @ApiOperation("Generate Multi-Sheet Excel Using Split field")
     public ResponseEntity<ExcelResponse> createMultiSheetExcel(@RequestBody @Validated MultiSheetExcelRequest request) throws IOException {
-        String splitBy = request.getSplitBy();
-        //get index of splitBy parameter in headers
-        int index = request.getHeaders().indexOf(splitBy);
-        if (index == -1) {
-            throw new IllegalRequestParametersException("there is no header with name: " + splitBy);
-        }
-        //build a map with key is each distinct value in index column, value is list of row data
-        Map<String, List<List<String>>> map = buildMap(request.getData(), index);
-
-        List<ExcelDataHeader> headers = convertStringsToHeaders(request.getHeaders());
-        List<ExcelDataSheet> sheets = new ArrayList<>();
-        for (Map.Entry<String, List<List<String>>> entry : map.entrySet()) {
-            ExcelDataSheet sheet = new ExcelDataSheet(entry.getKey(), headers, entry.getValue());
-            sheets.add(sheet);
-        }
-        ExcelData data = buildExcelData(sheets);
-        //generate excel file
-        File file = excelService.generateExcelReport(data);
-        //save excel meta data
-        ExcelFile excelFile = buildExcelFile(request, data, file);
-        excelService.saveExcelFileInfo(excelFile);
-        //return user excel meta data
-        ExcelResponse response = new ExcelResponse();
-        response.setFile(excelFile);
+        ExcelResponse response = excelService.createMultiSheetExcel(request);
         return new ResponseEntity<>(response, HttpStatus.OK);
-    }
-
-    private Map<String, List<List<String>>> buildMap(List<List<String>> data, int index) {
-        Map<String, List<List<String>>> map = new HashMap<>();
-        for (List<String> row : data) {
-            String splitByValue = row.get(index);
-            List<List<String>> rows = map.getOrDefault(splitByValue, new ArrayList<>());
-            rows.add(row);
-            map.put(splitByValue, rows);
-        }
-        return map;
     }
 
     @GetMapping("/excel")
@@ -186,27 +83,7 @@ public class ExcelGenerationController {
     @PostMapping("/excel/all/content")
     @ApiOperation("Download multiple excels as a zip file")
     public void downloadZipFile(@RequestBody List<ExcelFileId> fileIds, HttpServletResponse response) throws IOException {
-        String zipName = "ExcelFile.zip";
-        response.setContentType("APPLICATION/OCTET-STREAM");
-        response.setHeader("Content-Disposition","attachment; filename="+zipName);
-        // create byte buffer
-        byte[] buffer = new byte[1024];
-        OutputStream fos = response.getOutputStream();
-        ZipOutputStream zos = new ZipOutputStream(fos);
-        for (int i = 0; i < fileIds.size(); i++) {
-            InputStream fis = excelService.getExcelBodyById(fileIds.get(i).getFileId());
-            // begin writing a new ZIP entry, positions the stream to the start of the entry data
-            zos.putNextEntry(new ZipEntry(fileIds.get(i).getFileId() + ".xlsx"));
-            int length;
-            while ((length = fis.read(buffer)) > 0) {
-                zos.write(buffer, 0, length);
-            }
-            zos.closeEntry();
-            // close the InputStream
-            fis.close();
-        }
-        // close the ZipOutputStream
-        zos.close();
+        excelService.downloadZipFile(fileIds,response);
     }
 
     @DeleteMapping("/excel/{id:\\d+}")
